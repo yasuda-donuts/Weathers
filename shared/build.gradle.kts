@@ -1,4 +1,7 @@
+@file:OptIn(ExperimentalSwiftExportDsl::class)
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.swiftexport.ExperimentalSwiftExportDsl
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -12,18 +15,18 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            export(libs.androidx.lifecycle.viewmodel)
-            baseName = "Shared"
-            isStatic = true
+
+    iosArm64()
+    iosSimulatorArm64()
+    swiftExport {
+        moduleName = "Shared"
+        export(libs.kotlinx.datetime) {
+            moduleName = "KotlinDateTime"
+            flattenPackage = "kotlinx.datetime"
         }
+        export(libs.androidx.lifecycle.viewmodel)
     }
-    
+
     sourceSets {
         commonMain.dependencies {
             api(libs.androidx.lifecycle.viewmodel)
@@ -43,6 +46,10 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
+    }
+
+    compilerOptions {
+        optIn.add("kotlin.time.ExperimentalTime")
     }
 }
 
