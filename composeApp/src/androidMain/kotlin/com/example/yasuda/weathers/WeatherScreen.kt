@@ -1,7 +1,6 @@
 package com.example.yasuda.weathers
 
 import WeatherViewModel
-import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -173,9 +171,6 @@ fun HourlyWeather(weathers: List<HourlyWeather>) {
 fun HourlyWeathers(
     weathers: List<HourlyWeather>
 ) {
-    val state = rememberLazyListState()
-    val currentTime = SystemClock.currentNetworkTimeClock().millis()
-
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
