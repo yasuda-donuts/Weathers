@@ -19,6 +19,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.compose.material3)
         }
         commonMain.dependencies {
@@ -37,6 +38,7 @@ kotlin {
         }
     }
 }
+
 
 android {
     namespace = "com.example.yasuda.weathers"
