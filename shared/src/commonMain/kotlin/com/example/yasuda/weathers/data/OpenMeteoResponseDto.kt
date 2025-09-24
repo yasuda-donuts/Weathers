@@ -13,6 +13,7 @@ data class OpenMeteoResponseDto(
     @SerialName("timezone_abbreviation") val timezoneAbbreviation: String,
     @SerialName("elevation") val elevation: Double,
     @SerialName("current") val currentData: OpenMeteoCurrentDataDto?,
+    @SerialName("hourly") val hourlyData: OpenMeteoHourlyDataDto?,
     @SerialName("daily") val dailyData: OpenMeteoDailyDataDto?
 )
 
@@ -25,6 +26,14 @@ data class OpenMeteoCurrentDataDto(
 )
 
 @Serializable
+data class OpenMeteoHourlyDataDto(
+    @SerialName("time") val time: List<String>,
+    @SerialName("temperature_2m") val temperature: List<Double>,
+    @SerialName("weather_code") val weatherCode: List<Int>,
+    @SerialName("precipitation_probability") val precipitationProbability: List<Int>
+)
+
+@Serializable
 data class OpenMeteoDailyDataDto(
     @SerialName("time") val time: List<String>,
     @SerialName("weather_code") val weatherCode: List<Int>,
@@ -33,3 +42,5 @@ data class OpenMeteoDailyDataDto(
     @SerialName("sunrise") val sunrise: List<String>,
     @SerialName("sunset") val sunset: List<String>
 )
+
+

@@ -1,32 +1,40 @@
 package com.example.yasuda.weathers
 
 import WeatherViewModel
+import android.os.SystemClock
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,9 +42,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.yasuda.weathers.model.CurrentWeather
 import com.example.yasuda.weathers.model.DailyWeather
+import com.example.yasuda.weathers.model.HourlyWeather
 import com.example.yasuda.weathers.model.Weather
 import com.example.yasuda.weathers.viewmodel.WeatherUiState
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.format
+import kotlinx.datetime.format.byUnicodePattern
 import weatherViewModelFactory
+import kotlin.time.ExperimentalTime
 
 @Composable
 fun WeatherScreen(
@@ -55,25 +69,35 @@ fun WeatherScreenContent(
     uiState: WeatherUiState,
     onRefresh: () -> Unit = { }
 ) {
+    val state = rememberPullToRefreshState()
     PullToRefreshBox(
+        state = state,
         onRefresh = onRefresh,
         isRefreshing = uiState.isLoading && uiState.forecast != null,
-        modifier = Modifier.fillMaxSize()
+        indicator = {
+            PullToRefreshDefaults.LoadingIndicator(
+                state = state,
+                isRefreshing = uiState.isLoading && uiState.forecast != null,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        },
+        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            .fillMaxSize()
             .statusBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(state = rememberScrollState())
-                .padding(16.dp),
+                .verticalScroll(state = rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (uiState.isLoading && uiState.forecast == null) {
-                CircularWavyProgressIndicator(modifier = Modifier.size(64.dp))
+                LoadingIndicator(modifier = Modifier.size(64.dp))
             } else {
                 uiState.forecast?.let { forecast ->
                     CurrentWeather(forecast.currentWeather)
+                    HourlyWeather(forecast.hourlyForecast)
                     WeeklyWeather(forecast.weeklyForecast)
                 }
             }
@@ -88,11 +112,17 @@ fun WeatherScreenContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CurrentWeather(currentWeather: CurrentWeather) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.padding(16.dp)
+            .fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        shape = largeShape,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -100,7 +130,7 @@ fun CurrentWeather(currentWeather: CurrentWeather) {
         ) {
             Text(
                 text = "Current Weather",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLargeEmphasized,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -115,8 +145,7 @@ fun CurrentWeather(currentWeather: CurrentWeather) {
                 )
                 Text(
                     text = "${currentWeather.temperature}°C",
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.displayLargeEmphasized
                 )
             }
         }
@@ -124,35 +153,145 @@ fun CurrentWeather(currentWeather: CurrentWeather) {
 }
 
 @Composable
-fun WeeklyWeather(weathers: List<DailyWeather>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun HourlyWeather(weathers: List<HourlyWeather>) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Text(
-            text = "Weekly Forecast",
+            text = "Hourly Forecast",
             style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
         )
-        weathers.forEach {
-            dailyWeather ->
-            DailyWeatherItem(dailyWeather)
+        HourlyWeathers(weathers = weathers)
+    }
+}
+
+@OptIn(ExperimentalTime::class)
+@Composable
+fun HourlyWeathers(
+    weathers: List<HourlyWeather>
+) {
+    val state = rememberLazyListState()
+    val currentTime = SystemClock.currentNetworkTimeClock().millis()
+
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        items(weathers.size) { index ->
+            HourlyWeatherItem(
+                hourlyWeather = weathers[index],
+                shape = when (index) {
+                    0 -> smallShape.copy(
+                        topStart = largeShape.topStart,
+                        bottomStart = largeShape.bottomStart
+                    )
+                    weathers.lastIndex -> smallShape.copy(
+                        topEnd = largeShape.topEnd,
+                        bottomEnd = largeShape.bottomEnd
+                    )
+                    else -> smallShape
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun HourlyWeatherItem(
+    hourlyWeather: HourlyWeather,
+    shape: Shape
+) {
+    Card(
+        modifier = Modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        shape = shape,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = hourlyWeather.time.format(hourMinuteFormat),
+                style = MaterialTheme.typography.titleSmallEmphasized
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Icon(
+                painter = painterResource(id = hourlyWeather.weather.iconRes()),
+                contentDescription = hourlyWeather.weather.name,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${hourlyWeather.temperature}°C",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
 
 @Composable
-fun DailyWeatherItem(dailyWeather: DailyWeather) {
+fun WeeklyWeather(weathers: List<DailyWeather>) {
+    Column(
+        modifier = Modifier.padding(16.dp)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = "Weekly Forecast",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        weathers.forEachIndexed { index, dailyWeather ->
+            DailyWeatherItem(
+                dailyWeather = dailyWeather,
+                shape = when (index) {
+                    0 -> smallShape.copy(
+                        topStart = largeShape.topStart,
+                        topEnd = largeShape.topEnd
+                    )
+                    weathers.lastIndex -> smallShape.copy(
+                        bottomStart = largeShape.bottomStart,
+                        bottomEnd = largeShape.bottomEnd
+                    )
+                    else -> smallShape
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun DailyWeatherItem(
+    dailyWeather: DailyWeather,
+    shape: Shape
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        shape = shape,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = dailyWeather.date.toString(), // Consider formatting this date
+                    text = dailyWeather.date.format(yearDateFormat),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -169,12 +308,13 @@ fun DailyWeatherItem(dailyWeather: DailyWeather) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Sunrise: ${dailyWeather.sunrise}, Sunset: ${dailyWeather.sunset}",
+                text = "Sunrise: ${dailyWeather.sunrise.format(hourMinuteFormat)}, Sunset: ${dailyWeather.sunset.format(hourMinuteFormat)}",
                 style = MaterialTheme.typography.bodySmall
             )
         }
     }
 }
+
 
 private fun Weather.iconRes() = when (this) {
     Weather.CLEAR_SKY -> R.drawable.ico_day
@@ -185,3 +325,9 @@ private fun Weather.iconRes() = when (this) {
     Weather.THUNDERSTORM -> R.drawable.ico_thunderstorm
     Weather.UNKNOWN -> R.drawable.ico_unknown_med
 }
+
+private val hourMinuteFormat = LocalDateTime.Format { byUnicodePattern("HH:mm") }
+private val yearDateFormat = LocalDate.Format { byUnicodePattern("yyyy.MM.dd") }
+
+private val largeShape = ShapeDefaults.ExtraLarge
+private val smallShape = ShapeDefaults.ExtraSmall
