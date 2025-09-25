@@ -27,7 +27,7 @@ KMPを用いて、ViewModel までコードを共有し、UIから先を Android
 *   Android Studio の実行構成から `composeApp` を選択
 *   エミュレータまたは実機で実行
 
-<!-- <img src="/screenshots/android_screenshot.png" alt="Android App Screenshot" width="300"/> -->
+<img src="/screenshots/android_screenshot.png" alt="Android App Screenshot" width="300"/>
 
 ### iOS アプリケーション
 
@@ -35,4 +35,4 @@ KMPを用いて、ViewModel までコードを共有し、UIから先を Android
 *  iOSシミュレータまたは実機で実行
 *  or XCode でビルド (Kotlin側のビルドが Run Script 経由で走る)
 
-<!-- <img src="/screenshots/ios_screenshot.png" alt="iOS App Screenshot" width="300"/> -->
+<img src="/screenshots/ios_screenshot.png" alt="iOS App Screenshot" width="300"/>
