@@ -1,39 +1,38 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Weathers
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+## 目的
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+KMPを用いて、ViewModel までコードを共有し、UIから先を Android と iOS それぞれのネイティブコードで記述。
+同時期に別々のコンセプトで打ち出された Material 3 Expressive と Liquid Glass を双方試す。
 
-* [/shared](./shared/src) is for the code that will be shared between all targets in the project.
-  The most important subfolder is [commonMain](./shared/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+## 技術スタック
 
-### Build and Run Android Application
+*   **Kotlin Multiplatform (KMP)**: Android と iOS 間でのコード共有。今回は ViewModel まで共有
+*   **Material 3 Expressive**: Android側のUIテーマと表現力豊かなコンポーネントの活用
+*   **SwiftUI**: iOS固有のUI実装
+*   **SKIE**: Kotlin と Swift の間を補完
 
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
+## プロジェクト構成
 
-### Build and Run iOS Application
+*   `shared/`: UIに依存しない共通ビジネスロジックやデータ層を含むKotlin Multiplatformモジュール
+    *   `commonMain/`: 全プラットフォームで共有されるビジネスロジック (ViewModel, Repository など)。
+    *   `androidMain/`: Android固有のプラットフォームコード。
+    *   `iosMain/`: iOS固有のプラットフォームコード。
+*   `composeApp/`: Android用
+    *   `androidMain/`: Androidの画面
+*   `iosApp/`: iOS アプリケーションの Xcode プロジェクト
 
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+### Android アプリケーション
 
----
+*   Android Studio の実行構成から `composeApp` を選択
+*   エミュレータまたは実機で実行
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+<!-- <img src="/screenshots/android_screenshot.png" alt="Android App Screenshot" width="300"/> -->
+
+### iOS アプリケーション
+
+*  Android Studio の実行構成から `iosApp` を選択し
+*  iOSシミュレータまたは実機で実行
+*  or XCode でビルド (Kotlin側のビルドが Run Script 経由で走る)
+
+<!-- <img src="/screenshots/ios_screenshot.png" alt="iOS App Screenshot" width="300"/> -->
