@@ -6,7 +6,6 @@ import com.example.yasuda.weathers.data.NetworkResult
 import com.example.yasuda.weathers.data.OpenMeteoRepositoryImpl
 import com.example.yasuda.weathers.data.createHttpClient
 import com.example.yasuda.weathers.viewmodel.WeatherUiState
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
