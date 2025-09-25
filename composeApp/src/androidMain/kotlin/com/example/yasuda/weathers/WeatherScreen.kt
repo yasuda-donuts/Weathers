@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,11 +44,16 @@ import com.example.yasuda.weathers.model.DailyWeather
 import com.example.yasuda.weathers.model.HourlyWeather
 import com.example.yasuda.weathers.model.Weather
 import com.example.yasuda.weathers.viewmodel.WeatherUiState
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
+import kotlinx.datetime.format.FormatStringsInDatetimeFormats
 import kotlinx.datetime.format.byUnicodePattern
+import kotlinx.datetime.todayIn
 import weatherViewModelFactory
+import kotlin.math.roundToInt
 import kotlin.time.ExperimentalTime
 
 @Composable
@@ -124,11 +130,11 @@ fun CurrentWeather(currentWeather: CurrentWeather) {
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
             Text(
                 text = "Current Weather",
-                style = MaterialTheme.typography.titleLargeEmphasized,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -225,7 +231,7 @@ fun HourlyWeatherItem(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${hourlyWeather.temperature}°C",
+                text = "${hourlyWeather.temperature.roundToInt()}°C",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -236,9 +242,9 @@ fun HourlyWeatherItem(
 @Composable
 fun WeeklyWeather(weathers: List<DailyWeather>) {
     Column(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)
             .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp) 
     ) {
         Text(
             text = "Weekly Forecast",
@@ -266,6 +272,26 @@ fun WeeklyWeather(weathers: List<DailyWeather>) {
     }
 }
 
+@OptIn(ExperimentalTime::class)
+private fun formatDateToDayDisplay(date: LocalDate): String {
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    return when (date) {
+        today -> "Today"
+        else -> {
+            when (date.dayOfWeek) {
+                kotlinx.datetime.DayOfWeek.MONDAY -> "Mon"
+                kotlinx.datetime.DayOfWeek.TUESDAY -> "Tue"
+                kotlinx.datetime.DayOfWeek.WEDNESDAY -> "Wed"
+                kotlinx.datetime.DayOfWeek.THURSDAY -> "Thu"
+                kotlinx.datetime.DayOfWeek.FRIDAY -> "Fri"
+                kotlinx.datetime.DayOfWeek.SATURDAY -> "Sat"
+                kotlinx.datetime.DayOfWeek.SUNDAY -> "Sun"
+                else -> date.dayOfWeek.name.take(3)
+            }
+        }
+    }
+}
+
 @Composable
 fun DailyWeatherItem(
     dailyWeather: DailyWeather,
@@ -279,32 +305,30 @@ fun DailyWeatherItem(
         ),
         shape = shape,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = dailyWeather.date.format(yearDateFormat),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Icon(
-                    painter = painterResource(id = dailyWeather.weather.iconRes()),
-                    contentDescription = dailyWeather.weather.name,
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween 
+        ) {
             Text(
-                text = "Max: ${dailyWeather.maxTemperature}°C, Min: ${dailyWeather.minTemperature}°C",
-                style = MaterialTheme.typography.bodyMedium
+                text = formatDateToDayDisplay(dailyWeather.date), 
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f) 
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Icon(
+                painter = painterResource(id = dailyWeather.weather.iconRes()),
+                contentDescription = dailyWeather.weather.name,
+                modifier = Modifier.size(36.dp) 
+            )
             Text(
-                text = "Sunrise: ${dailyWeather.sunrise.format(hourMinuteFormat)}, Sunset: ${dailyWeather.sunset.format(hourMinuteFormat)}",
-                style = MaterialTheme.typography.bodySmall
+                text = "${dailyWeather.maxTemperature.roundToInt()}° / ${dailyWeather.minTemperature.roundToInt()}°",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium, 
+                textAlign = TextAlign.End, 
+                modifier = Modifier.weight(1f) 
             )
         }
     }
@@ -321,8 +345,8 @@ private fun Weather.iconRes() = when (this) {
     Weather.UNKNOWN -> R.drawable.ico_unknown_med
 }
 
+@OptIn(FormatStringsInDatetimeFormats::class)
 private val hourMinuteFormat = LocalDateTime.Format { byUnicodePattern("HH:mm") }
-private val yearDateFormat = LocalDate.Format { byUnicodePattern("yyyy.MM.dd") }
 
 private val largeShape = ShapeDefaults.ExtraLarge
 private val smallShape = ShapeDefaults.ExtraSmall

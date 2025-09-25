@@ -10,33 +10,21 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            BackgroundView(weather: uiState?.forecast?.currentWeather.weather)
-
-            NavigationView {
-                ZStack {
-                    Color.clear
-
-                    if let state = uiState {
-                        if state.isLoading && state.forecast == nil {
-                            loadingView
-                        } else if let errorMsg = state.error {
-                            errorView(message: errorMsg)
-                        } else if let forecast = state.forecast {
-                            weatherContentView(forecast: forecast)
-                        } else {
-                            placeholderView
-                        }
-                    } else {
-                        loadingView
-                    }
+            if let state = uiState {
+                if state.isLoading && state.forecast == nil {
+                    loadingView
+                } else if let errorMsg = state.error {
+                    errorView(message: errorMsg)
+                } else if let forecast = state.forecast {
+                    weatherContentView(forecast: forecast)
+                } else {
+                    placeholderView
                 }
-                .navigationTitle("Tokyo Weather")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.visible, for:.navigationBar)
-                .toolbarBackground(.ultraThinMaterial, for:.navigationBar)
+            } else {
+                loadingView
             }
-            .preferredColorScheme(.dark)
         }
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .onAppear(perform: setupViewModel)
         .onDisappear {
             collectionTask?.cancel()
@@ -45,7 +33,7 @@ struct ContentView: View {
 
     private func setupViewModel() {
         if kmpViewModel == nil {
-            let factory = Shared.weatherViewModelFactory // SKIE: Direct access
+            let factory = Shared.weatherViewModelFactory
             let specificVm: Shared.WeatherViewModel = viewModelStoreOwner.viewModel(
                 factory: factory,
                 extras: Shared.CreationExtras.Empty.shared
@@ -54,7 +42,6 @@ struct ContentView: View {
 
             collectionTask = Task {
                 guard let vm = self.kmpViewModel else { return }
-                // SKIE: Collect StateFlow, attempting to call uiState as a function
                 for await newState in vm.uiState {
                     await MainActor.run {
                         self.uiState = newState
@@ -69,8 +56,8 @@ struct ContentView: View {
 extension ContentView {
     private var loadingView: some View {
         ProgressView("Fetching Weather...")
-            .tint(.white)
-            .foregroundStyle(.white)
+            .tint(.primary)
+            .foregroundStyle(.primary)
     }
 
     private var placeholderView: some View {
@@ -88,7 +75,7 @@ extension ContentView {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
-                .foregroundColor(.yellow)
+                .foregroundColor(.orange)
             Text("Error")
                 .font(.title)
             Text(message)
@@ -99,21 +86,15 @@ extension ContentView {
             Button("Retry") {
                 kmpViewModel?.fetchTokyoWeather()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.yellow)
+            .buttonStyle(.bordered)
+            .tint(.orange)
         }
         .padding()
     }
 
     private func weatherContentView(forecast: Shared.WeatherForecast) -> some View {
         ScrollView {
-            if #available(iOS 26.0, *) { // Preserving original iOS version check logic
-                GlassEffectContainer(spacing: 20.0) {
-                    weatherCards(forecast: forecast)
-                }
-            } else {
-                weatherCards(forecast: forecast)
-            }
+            weatherCards(forecast: forecast)
         }
         .refreshable {
             kmpViewModel?.fetchTokyoWeather()
@@ -123,26 +104,26 @@ extension ContentView {
 
     @ViewBuilder
     private func weatherCards(forecast: Shared.WeatherForecast) -> some View {
-        VStack(spacing: 28) {
+        VStack(alignment: .leading, spacing: 24) {
             CurrentWeatherView(currentWeather: forecast.currentWeather)
-            HourlyWeatherView(hourlyForecast: forecast.hourlyForecast)
-            WeeklyWeatherView(weeklyForecast: forecast.weeklyForecast)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Hourly Forecast")
+                    .font(.title3).bold()
+                    .foregroundColor(.primary)
+                    .padding(.leading) 
+                HourlyWeatherView(hourlyForecast: forecast.hourlyForecast)
+            }
+
+            VStack(alignment: .leading, spacing: 8) { 
+                Text("Weekly Forecast")
+                    .font(.title3).bold()
+                    .foregroundColor(.primary)
+                    .padding(.leading)
+                WeeklyWeatherView(weeklyForecast: forecast.weeklyForecast)
+            }
         }
         .padding()
-    }
-}
-
-private struct BackgroundView: View {
-    let weather: Shared.Weather?
-
-    var body: some View {
-        let topColor = weather?.gradientColors.top ?? Color.black
-        let bottomColor = weather?.gradientColors.bottom ?? Color.gray
-
-        LinearGradient(colors: [topColor, bottomColor], startPoint:.top, endPoint:.bottom)
-            .blur(radius: 60)
-            .ignoresSafeArea()
-            .animation(.easeInOut(duration: 1.0), value: weather)
     }
 }
 
@@ -150,20 +131,24 @@ private struct CurrentWeatherView: View {
     let currentWeather: Shared.CurrentWeather
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(currentWeather.weather.userFriendlyDescription)
-                .font(.title2).fontWeight(.medium)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Current Weather")
+                .font(.title2).fontWeight(.semibold)
+                .foregroundColor(.primary.opacity(0.9))
 
-            Text(String(format: "%.1f°", currentWeather.temperature))
-                .font(.system(size: 80, weight:.bold))
-
-            Image(systemName: currentWeather.weather.sfSymbolName)
-                .font(.largeTitle)
-                .symbolRenderingMode(.multicolor)
-                .padding(.top, 8)
+            HStack(spacing: 20) { 
+                Image(systemName: currentWeather.weather.sfSymbolName)
+                    .font(.system(size: 50))
+                    .symbolRenderingMode(.multicolor)
+                
+                Text(String(format: "%.1f°C", currentWeather.temperature))
+                    .font(.system(size: 50, weight: .bold))
+            }
+            .foregroundColor(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .foregroundColor(.white)
-        .shadow(radius: 5)
+        .padding()
+        .glassedEffect(in: RoundedRectangle(cornerRadius: 20))
     }
 }
 
@@ -172,22 +157,17 @@ private struct HourlyWeatherView: View {
 
     var body: some View {
         VStack(alignment:.leading, spacing: 12) {
-            Text("HOURLY FORECAST")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.leading)
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(hourlyForecast, id: \.time) { weatherItem in
                         HourlyWeatherItem(hourlyWeather: weatherItem)
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal) 
+                .padding(.bottom, 8) 
             }
         }
-        .padding()
+        .padding() 
         .glassedEffect(in: RoundedRectangle(cornerRadius: 20))
     }
 }
@@ -202,10 +182,10 @@ private struct HourlyWeatherItem: View {
             Image(systemName: hourlyWeather.weather.sfSymbolName)
                 .font(.title2)
                 .symbolRenderingMode(.multicolor)
-            Text("\(String(format: "%.0f", hourlyWeather.temperature))°")
+            Text("\(String(format: "%.0f°C", hourlyWeather.temperature))")
                 .font(.title3.weight(.semibold))
         }
-        .foregroundColor(.white)
+        .foregroundColor(.primary)
     }
 }
 
@@ -214,19 +194,14 @@ private struct WeeklyWeatherView: View {
 
     var body: some View {
         VStack(alignment:.leading, spacing: 12) {
-            Text("7-DAY FORECAST")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.leading)
-
             VStack(spacing: 16) {
                 ForEach(weeklyForecast, id: \.date) { dailyWeather in
                     DailyWeatherRow(dailyWeather: dailyWeather)
                 }
             }
+            .padding([.horizontal, .bottom]) 
         }
-        .padding()
+        .padding() 
         .glassedEffect(in: RoundedRectangle(cornerRadius: 20))
     }
 }
@@ -238,18 +213,16 @@ private struct DailyWeatherRow: View {
         HStack(spacing: 16) {
             Text(formatDate(dailyWeather.date))
                 .font(.headline)
-                .frame(width: 120, alignment:.leading)
 
             Image(systemName: dailyWeather.weather.sfSymbolName)
                 .font(.title2)
                 .symbolRenderingMode(.multicolor)
-                .frame(maxWidth:.infinity)
+                .frame(maxWidth:.infinity, alignment: .center)
 
-            Text("\(String(format: "%.0f", dailyWeather.maxTemperature))° / \(String(format: "%.0f", dailyWeather.minTemperature))°")
+            Text("\(String(format: "%.0f°", dailyWeather.maxTemperature)) / \(String(format: "%.0f°", dailyWeather.minTemperature))")
                 .font(.headline)
-                .frame(width: 100, alignment:.trailing)
         }
-        .foregroundColor(.white)
+        .foregroundColor(.primary)
     }
 }
 
@@ -298,14 +271,14 @@ func formatDate(_ kmpLocalDate: Shared.Kotlinx_datetimeLocalDate) -> String {
     let dateFormatter = DateFormatter()
     var components = DateComponents()
     components.year = Int(kmpLocalDate.year)
-    components.month = Int(kmpLocalDate.monthNumber) // Corrected access for LocalDate
-    components.day = Int(kmpLocalDate.dayOfMonth)    // Corrected access for LocalDate
+    components.month = Int(kmpLocalDate.monthNumber) 
+    components.day = Int(kmpLocalDate.dayOfMonth)    
 
     if let date = Calendar.current.date(from: components) {
         if Calendar.current.isDateInToday(date) {
             return "Today"
         }
-        dateFormatter.dateFormat = "EEE"
+        dateFormatter.dateFormat = "EEE" 
         return dateFormatter.string(from: date)
     }
     return kmpLocalDate.description()
@@ -316,18 +289,17 @@ func formatTime(_ kmpLocalDateTime: Shared.Kotlinx_datetimeLocalDateTime, hourly
     var components = DateComponents()
     components.year = Int(kmpLocalDateTime.year)
     components.month = Int(kmpLocalDateTime.monthNumber)
-    components.day = Int(kmpLocalDateTime.dayOfMonth) // Corrected access for LocalDateTime
+    components.day = Int(kmpLocalDateTime.dayOfMonth) 
     components.hour = Int(kmpLocalDateTime.hour)
     components.minute = Int(kmpLocalDateTime.minute)
 
     if let date = Calendar.current.date(from: components) {
-        dateFormatter.dateFormat = hourlyFormat ? "h a" : "h:mm a"
+        dateFormatter.dateFormat = hourlyFormat ? "h a" : "HH:mm"
         return dateFormatter.string(from: date)
     }
     return "\(kmpLocalDateTime.hour):\(String(format: "%02d", kmpLocalDateTime.minute))"
 }
 
-// SwiftFlowCollector class removed
 
 extension View {
     @ViewBuilder
